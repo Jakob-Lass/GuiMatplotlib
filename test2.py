@@ -162,7 +162,9 @@ class DetachableTabWidget(QtWidgets.QTabWidget):
     def on_close_tab(self):
         if self.tabBar.count():
             idx = self.tabBar.currentIndex()
-            self.removeTab(idx)    
+            self.removeTab(idx)
+        else:
+            self.app.mainWindow.close()
 
     ##
     #  When a tab is detached, the contents are placed into this QDialog.  The tab
@@ -185,10 +187,22 @@ class DetachableTabWidget(QtWidgets.QTabWidget):
 
             self.contentWidget.show()
             self.wasOutside = False
+
+            menubar = self.menuBar()
+            dockAction = QtWidgets.QAction('Dock',menubar)
+            dockAction.setShortcut("Ctrl+D")
+            menubar.addAction(dockAction)
+            dockAction.triggered.connect(self.dock)
+
+            self.shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+W"), self, self.close)
+            
             
             self.app = app
             self.show()
             
+        def dock(self):
+            self.onCloseSignal.emit(self.contentWidget, self.objectName(), self.windowIcon())
+            self.close()
 
         ##
         #  Capture a double click event on the dialog's window frame
@@ -212,8 +226,8 @@ class DetachableTabWidget(QtWidgets.QTabWidget):
         #  content widget back to the DetachableTabWidget
         #
         #  @param    event    a close event
-        def closeEvent(self, event):
-            self.onCloseSignal.emit(self.contentWidget, self.objectName(), self.windowIcon())
+        #def closeEvent(self, event):
+        #    self.onCloseSignal.emit(self.contentWidget, self.objectName(), self.windowIcon())
 
         def moveEvent(self,event):
             pos = QtGui.QCursor.pos()
@@ -441,7 +455,7 @@ if __name__ == '__main__':
 
     app = QtWidgets.QApplication(sys.argv)
 
-    mainWindow = MainWindow(app)
+    app.mainWindow = MainWindow(app)
     
     
 
