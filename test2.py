@@ -1,6 +1,17 @@
 from PyQt5 import QtGui, QtCore, QtWidgets
 from PyQt5.QtCore import pyqtSignal, pyqtSlot
 
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg,NavigationToolbar2QT as NavigationToolbar
+from matplotlib.figure import Figure
+import numpy as np
+class MplCanvas(FigureCanvasQTAgg):
+
+    def __init__(self, parent=None, width=5, height=4, dpi=100):
+        fig = Figure(figsize=(width, height), dpi=dpi)
+        self.axes = fig.add_subplot(111)
+        super(MplCanvas, self).__init__(fig)
+
+
 ##
 # The DetachableTabWidget adds additional functionality to Qt's QTabWidget that allows it
 # to detach and re-attach tabs.
@@ -26,6 +37,7 @@ class DetachableTabWidget(QtWidgets.QTabWidget):
 
         self.setTabBar(self.tabBar)
         self.app = app
+        self.plots = []
 
     ##
     #  The default movable functionality of QTabWidget must remain disabled
@@ -120,6 +132,26 @@ class DetachableTabWidget(QtWidgets.QTabWidget):
         if index > -1:
             self.setCurrentIndex(index)
 
+
+    def addtab(self,tabName=None):
+        if tabName is None:
+            count = self.count()
+            tabName = 'Matplotlib Figure '+str(count)
+        
+        tab = QtWidgets.QWidget()
+        self.addTab(tab, 'Temporary')
+        
+    
+        layout = QtWidgets.QVBoxLayout()
+        sc = MplCanvas(mainWindow.tabWidget, width=5, height=4, dpi=100)
+        sc.axes.plot(np.random.rand(10),np.random.rand(10))
+        toolbar = NavigationToolbar(sc, None)
+        layout.addWidget(toolbar)
+        layout.addWidget(sc)
+        self.plots.append(sc)
+
+        self.setTabText(self.count()-1,tabName)
+        tab.setLayout(layout)
 
 
     ##
@@ -367,14 +399,8 @@ if __name__ == '__main__':
     
     mainWindow.tabWidget = DetachableTabWidget(mainWindow,app = app)
 
-    tab1 = QtWidgets.QLabel('Test Widget 1')    
-    mainWindow.tabWidget.addTab(tab1, 'Tab1')
-
-    tab2 = QtWidgets.QLabel('Test Widget 2')
-    mainWindow.tabWidget.addTab(tab2, 'Tab2')
-
-    tab3 = QtWidgets.QLabel('Test Widget 3')
-    mainWindow.tabWidget.addTab(tab3, 'Tab3')
+    mainWindow.tabWidget.addtab()
+    mainWindow.tabWidget.addtab('Tester!')
 
     mainWindow.tabWidget.show()
     mainWindow.setCentralWidget(mainWindow.tabWidget)
