@@ -160,30 +160,40 @@ class DetachableTabWidget(QtWidgets.QTabWidget):
 
     @pyqtSlot()
     def on_close_tab(self):
-        print("DEBUG: tabs count:", self.tabBar.count())
-        
         if self.tabBar.count():
             idx = self.tabBar.currentIndex()
-            print("DEBUG: tabs current index:", idx)
             self.removeTab(idx)    
 
     ##
     #  When a tab is detached, the contents are placed into this QDialog.  The tab
     #  can be re-attached by closing the dialog or by double clicking on its
     #  window frame.
-    class DetachedTab(QtWidgets.QDialog):
+    class DetachedTab(QtWidgets.QMainWindow):
         onCloseSignal = pyqtSignal(QtWidgets.QWidget, str, QtGui.QIcon)
         
         def __init__(self, contentWidget, parent=None,app=None):
-            QtWidgets.QDialog.__init__(self, parent)
+            QtWidgets.QMainWindow.__init__(self, parent)
 
-            layout = QtWidgets.QVBoxLayout(self)            
+            
+            centralWidget = QtWidgets.QWidget()
+            self.setCentralWidget(centralWidget)
+            
+            self.setWindowFlag(QtCore.Qt.WindowMinimizeButtonHint, True)
+            self.setWindowFlag(QtCore.Qt.WindowMaximizeButtonHint, True)
+
+            
+            layout = QtWidgets.QVBoxLayout(centralWidget)    
+            centralWidget.setLayout(layout)        
             self.contentWidget = contentWidget            
+            
             layout.addWidget(self.contentWidget)
+
             self.contentWidget.show()
             self.wasOutside = False
             
             self.app = app
+            self.show()
+            
 
         ##
         #  Capture a double click event on the dialog's window frame
