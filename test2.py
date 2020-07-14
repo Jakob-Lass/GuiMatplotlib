@@ -216,7 +216,7 @@ class DetachableTabWidget(QtWidgets.QTabWidget):
             # close the dialog
             if event.type() == 176:
                 event.accept()
-                self.close()
+                self.dock()
 
             return QtWidgets.QDialog.event(self, event)
 
@@ -242,7 +242,7 @@ class DetachableTabWidget(QtWidgets.QTabWidget):
                         self.winId())
 
             QtWidgets.QApplication.processEvents()
-            self.close()
+            self.dock()
             QtWidgets.QApplication.processEvents()
             #self.parent().tabWidget.tabBar.dropEvent(event)
             #return None
