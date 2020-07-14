@@ -175,18 +175,13 @@ class DetachableTabWidget(QtWidgets.QTabWidget):
             QtWidgets.QMainWindow.__init__(self, parent)
 
             
-            centralWidget = QtWidgets.QWidget()
-            self.setCentralWidget(centralWidget)
+            self.contentWidget = contentWidget     
+            self.setCentralWidget(contentWidget)       
             
             self.setWindowFlag(QtCore.Qt.WindowMinimizeButtonHint, True)
             self.setWindowFlag(QtCore.Qt.WindowMaximizeButtonHint, True)
 
             
-            layout = QtWidgets.QVBoxLayout(centralWidget)    
-            centralWidget.setLayout(layout)        
-            self.contentWidget = contentWidget            
-            
-            layout.addWidget(self.contentWidget)
 
             self.contentWidget.show()
             self.wasOutside = False
@@ -247,8 +242,6 @@ class DetachableTabWidget(QtWidgets.QTabWidget):
             
             tab = self.parent().tabWidget.tabBar.count()-1
 
-            
-            
             
             targetPixmap = QtGui.QPixmap(pixmap.size())
             targetPixmap.fill(QtCore.Qt.transparent)
