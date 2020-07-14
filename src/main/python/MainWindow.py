@@ -167,7 +167,7 @@ class DetachableTabWidget(QtWidgets.QTabWidget):
             idx = self.tabBar.currentIndex()
             self.removeTab(idx)
         else:
-            self.app.mainWindow.close()
+            self.parent().close()
 
     ##
     #  When a tab is detached, the contents are placed into this QDialog.  The tab
