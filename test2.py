@@ -1,4 +1,4 @@
-from PyQt5 import QtGui, QtCore, QtWidgets
+from PyQt5 import QtGui, QtCore, QtWidgets, uic
 from PyQt5.QtCore import pyqtSignal, pyqtSlot
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg,NavigationToolbar2QT as NavigationToolbar
@@ -131,11 +131,14 @@ class DetachableTabWidget(QtWidgets.QTabWidget):
         # Make this tab the current tab
         if index > -1:
             self.setCurrentIndex(index)
+    
+    
 
-
-    def addtab(self,tabName=None):
+    def addtab(self,*,tabName=None):
         if tabName is None:
             count = self.count()
+            if count is False:
+                count = 0
             tabName = 'Matplotlib Figure '+str(count)
         
         tab = QtWidgets.QWidget()
@@ -143,16 +146,26 @@ class DetachableTabWidget(QtWidgets.QTabWidget):
         
     
         layout = QtWidgets.QVBoxLayout()
-        sc = MplCanvas(mainWindow.tabWidget, width=5, height=4, dpi=100)
+        sc = MplCanvas(self.parent().tabWidget, width=5, height=4, dpi=100)
         sc.axes.plot(np.random.rand(10),np.random.rand(10))
         toolbar = NavigationToolbar(sc, None)
         layout.addWidget(toolbar)
         layout.addWidget(sc)
         self.plots.append(sc)
 
+        self.setCurrentIndex(self.count()-1)
+        
         self.setTabText(self.count()-1,tabName)
         tab.setLayout(layout)
 
+    @pyqtSlot()
+    def on_close_tab(self):
+        print("DEBUG: tabs count:", self.tabBar.count())
+        
+        if self.tabBar.count():
+            idx = self.tabBar.currentIndex()
+            print("DEBUG: tabs current index:", idx)
+            self.removeTab(idx)    
 
     ##
     #  When a tab is detached, the contents are placed into this QDialog.  The tab
@@ -263,14 +276,17 @@ class DetachableTabWidget(QtWidgets.QTabWidget):
     class TabBar(QtWidgets.QTabBar):
         onDetachTabSignal = pyqtSignal(int, QtCore.QPoint)
         onMoveTabSignal = pyqtSignal(int, int)
+        
 
         def __init__(self, parent=None,app=None):
             QtWidgets.QTabBar.__init__(self, parent)
 
             self.setMovable(True)
             self.setAcceptDrops(True)
+            self.setTabsClosable(True)
             self.setElideMode(QtCore.Qt.ElideRight)
             self.setSelectionBehaviorOnRemove(QtWidgets.QTabBar.SelectLeftTab)
+
 
             self.dragStartPos = QtCore.QPoint()
             self.dragDropedPos = QtCore.QPoint()
@@ -390,21 +406,41 @@ class DetachableTabWidget(QtWidgets.QTabWidget):
             self.dragDropedPos = event.pos()
             QtWidgets.QTabBar.dropEvent(self, event)
 
+
+MainBase, MainForm = uic.loadUiType("/home/lass/Dropbox/PhD/Software/GuiMatplotlib/src/main/python/Main.ui")
+class MainWindow(MainBase, MainForm):
+
+    def __init__(self, app, *args, **kwargs):
+        super(MainWindow, self).__init__(*args, **kwargs)
+        self.app = app
+        self.setupUi(self)
+
+        self.tabWidget = DetachableTabWidget(self,app = app)
+        self.tabWidget.tabCloseRequested.connect(lambda index: self.tabWidget.removeTab(index))
+
+        self.shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+W"), self, self.tabWidget.on_close_tab)
+
+        self.actionPlot_Random.triggered.connect(self.tabWidget.addtab)
+
+        
+        self.tabWidget.show()
+        self.setCentralWidget(self.tabWidget)
+        self.show()
+        
+
+        
+
 if __name__ == '__main__':
     import sys
+    from os import path
+
+    
 
     app = QtWidgets.QApplication(sys.argv)
 
-    mainWindow = QtWidgets.QMainWindow()
+    mainWindow = MainWindow(app)
     
-    mainWindow.tabWidget = DetachableTabWidget(mainWindow,app = app)
-
-    mainWindow.tabWidget.addtab()
-    mainWindow.tabWidget.addtab('Tester!')
-
-    mainWindow.tabWidget.show()
-    mainWindow.setCentralWidget(mainWindow.tabWidget)
-    mainWindow.show()
+    
 
     try:
         exitStatus = app.exec_()
