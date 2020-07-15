@@ -253,14 +253,14 @@ class DetachableTabWidget(QtWidgets.QTabWidget):
             del plot
             self.close()
             #self.onCloseSignal.emit(self.contentWidget, self.objectName(), self.windowIcon())
-
-        def moveEvent(self,event):
-            pos = QtGui.QCursor.pos()
-            if self.parent().geometry().contains(pos) and self.wasOutside:
-                self.enterParent(event)
-                
-            else:
-                self.wasOutside = True
+        
+        #def moveEvent(self,event):
+        #    pos = QtGui.QCursor.pos()
+        #    if self.parent().geometry().contains(pos) and self.wasOutside:
+        #        self.enterParent(event)
+        #        
+        #    else:
+        #        self.wasOutside = True
 
         def enterParent(self,event):
             pixmap = QtGui.QScreen.grabWindow(self.app.primaryScreen(), 
