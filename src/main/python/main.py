@@ -17,6 +17,7 @@ class AppContext(ApplicationContext):
 
     @cached_property
     def main_window(self):
+        self.app.AppContext = self
         res = MainWindow(self.app)
         
         return res # Pass context to the window.
