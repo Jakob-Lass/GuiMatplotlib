@@ -11,7 +11,7 @@ from os import path
 
 class Mpltab(QtWidgets.QWidget):
     """ Widget to keep track of mpl figure in tab"""
-    def __init__(self,MplCanvas, plotId, tabId, mainWindow, parent=None, toolbar=True, docked=True):
+    def __init__(self,MplCanvas, plotId, tabId, mainWindow, parent=None, toolbar=True, docked=True, dockingIcon=None, unDockingIcon=None):
         super().__init__(parent=parent)
 
         self.plotId = plotId
@@ -20,16 +20,24 @@ class Mpltab(QtWidgets.QWidget):
         self.mainWindow = mainWindow
 
         self.layout = QtWidgets.QVBoxLayout()
+        self.layout.setContentsMargins(0,0,0,0) # Remove border around layout
+
+        self.dockingIcon = dockingIcon
+        self.unDockingIcon = unDockingIcon
         
         if toolbar:
-            self.toolbar = NavigationToolbar(MplCanvas, None)
-            self.layout.addWidget(self.toolbar)
-            self.layout.addWidget(MplCanvas)
-            self.menubar = self.toolbar
-            self.dockAction = QtWidgets.QAction('Undock',self.toolbar)
+            self.menubar = NavigationToolbar(MplCanvas, None)
+
         else:
-            self.menubar = self.mainWindow.menuBar()
-            self.dockAction = QtWidgets.QAction('Undock',self.mainWindow.menubar)
+            self.menubar = QtWidgets.QMenuBar(self)
+            self.menubar.setFixedHeight(25)
+
+        self.layout.addWidget(self.menubar)
+        self.layout.addWidget(MplCanvas)
+        if not self.dockingIcon is None and not self.unDockingIcon is None:
+            self.dockAction = QtWidgets.QAction(self.unDockingIcon,'Undock',self.menubar)
+        else:
+            self.dockAction = QtWidgets.QAction('Undock',self.menubar)
         
         self.setLayout(self.layout)
 
@@ -50,12 +58,16 @@ class Mpltab(QtWidgets.QWidget):
     def undock(self,newParent):
         self.docked = False
         self.dockAction.setText('Dock')
+        if not self.dockingIcon is None and not self.unDockingIcon is None:
+            self.dockAction.setIcon(self.dockingIcon)
         self.setParent(newParent)
         
 
     def dock(self,newParent):
         self.docked = True
         self.dockAction.setText('Undock')
+        if not self.dockingIcon is None and not self.unDockingIcon is None:
+            self.dockAction.setIcon(self.unDockingIcon)
         self.setParent(newParent)
 
 
@@ -206,7 +218,15 @@ class DetachableTabWidget(QtWidgets.QTabWidget):
         sc.axes.plot(np.random.rand(10),np.random.rand(10))
         plotId = len(self.plots)
 
-        tab = Mpltab(MplCanvas=sc,plotId=plotId,tabId=self.count(),parent=self, docked=True, mainWindow = self.parent())
+        dockingIcon = QtGui.QIcon()
+        dockingIcon.addPixmap(QtGui.QPixmap(self.app.AppContext.get_resource('icons/dock.png')))
+        
+        unDockingIcon = QtGui.QIcon()
+        unDockingIcon.addPixmap(QtGui.QPixmap(self.app.AppContext.get_resource('icons/undock.png')))
+        
+
+        tab = Mpltab(MplCanvas=sc,plotId=plotId,tabId=self.count(),parent=self, docked=True, mainWindow = self.parent(),\
+            dockingIcon=dockingIcon,unDockingIcon=unDockingIcon)
         self.addTab(tab, 'Temporary')
         self.plots.append(sc)
 
