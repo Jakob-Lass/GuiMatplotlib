@@ -3,6 +3,7 @@ from PyQt5.QtCore import pyqtSignal, pyqtSlot
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg,NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
+import matplotlib.pyplot as plt
 import numpy as np
 
 from os import path
@@ -10,9 +11,12 @@ from os import path
 class MplCanvas(FigureCanvasQTAgg):
 
     def __init__(self, parent=None, width=5, height=4, dpi=100):
-        fig = Figure(figsize=(width, height), dpi=dpi)
-        self.axes = fig.add_subplot(111)
-        super(MplCanvas, self).__init__(fig)
+        self.fig = Figure(figsize=(width, height), dpi=dpi)
+        self.axes = self.fig.add_subplot(111)
+        super(MplCanvas, self).__init__(self.fig)
+
+    def __del__(self):
+        plt.close(self.fig)
 
 
 ##
@@ -33,6 +37,8 @@ class MplCanvas(FigureCanvasQTAgg):
 class DetachableTabWidget(QtWidgets.QTabWidget):
     def __init__(self, parent=None,app=None):
         QtWidgets.QTabWidget.__init__(self, parent)
+
+        self.old_removeTab = lambda index: QtWidgets.QTabWidget.removeTab(self,index)
 
         self.tabBar = self.TabBar(self,app=app)
         self.tabBar.onDetachTabSignal.connect(self.detachTab)
@@ -146,6 +152,7 @@ class DetachableTabWidget(QtWidgets.QTabWidget):
         
         tab = QtWidgets.QWidget()
         self.addTab(tab, 'Temporary')
+        tab.plotId = len(self.plots)
         
     
         layout = QtWidgets.QVBoxLayout()
@@ -160,6 +167,15 @@ class DetachableTabWidget(QtWidgets.QTabWidget):
         
         self.setTabText(self.count()-1,tabName)
         tab.setLayout(layout)
+
+    
+
+    def removeTab(self,index):
+        plotId = self.widget(index).plotId
+        plot = self.plots[plotId]
+        self.plots[plotId] = None
+        del plot
+        self.old_removeTab(index)
 
     @pyqtSlot()
     def on_close_tab(self):
@@ -176,7 +192,7 @@ class DetachableTabWidget(QtWidgets.QTabWidget):
     class DetachedTab(QtWidgets.QMainWindow):
         onCloseSignal = pyqtSignal(QtWidgets.QWidget, str, QtGui.QIcon)
         
-        def __init__(self, contentWidget, parent=None,app=None):
+        def __init__(self, contentWidget, parent=None,app=None, plotId = None):
             QtWidgets.QMainWindow.__init__(self, parent)
 
             
@@ -185,7 +201,8 @@ class DetachableTabWidget(QtWidgets.QTabWidget):
             
             self.setWindowFlag(QtCore.Qt.WindowMinimizeButtonHint, True)
             self.setWindowFlag(QtCore.Qt.WindowMaximizeButtonHint, True)
-
+            self.docked = False
+            self.plotId = self.contentWidget.plotId
             
 
             self.contentWidget.show()
@@ -205,6 +222,7 @@ class DetachableTabWidget(QtWidgets.QTabWidget):
             
         def dock(self):
             self.onCloseSignal.emit(self.contentWidget, self.objectName(), self.windowIcon())
+            self.docked = True
             self.close()
 
         ##
@@ -229,8 +247,12 @@ class DetachableTabWidget(QtWidgets.QTabWidget):
         #  content widget back to the DetachableTabWidget
         #
         #  @param    event    a close event
-        #def closeEvent(self, event):
-        #    self.onCloseSignal.emit(self.contentWidget, self.objectName(), self.windowIcon())
+        def closeEvent(self, event):
+            plot = self.parent().tabWidget.plots[self.plotId]
+            self.parent().tabWidget.plots[self.plotId] = None
+            del plot
+            self.close()
+            #self.onCloseSignal.emit(self.contentWidget, self.objectName(), self.windowIcon())
 
         def moveEvent(self,event):
             pos = QtGui.QCursor.pos()
@@ -417,6 +439,12 @@ class DetachableTabWidget(QtWidgets.QTabWidget):
 
             QtWidgets.QTabBar.dragMoveEvent(self, event)
 
+
+        def closeEvent(self, event):
+            plot = self.parent().tabWidget.plots[self.plotId]
+            self.parent().tabWidget.plots[self.plotId] = None
+            del plot
+            self.close()
 
         ##
         #  Get the position of the end of the drag
