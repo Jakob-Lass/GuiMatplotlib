@@ -14,8 +14,11 @@ class Mpltab(QtWidgets.QWidget):
     def __init__(self,MplCanvas, plotId, tabId, mainWindow, parent=None, toolbar=True, docked=True, dockingIcon=None, unDockingIcon=None):
         super().__init__(parent=parent)
 
+        # Save both plotId and tabId
         self.plotId = plotId
         self.tabId = tabId
+
+        # If docked, as standard the Mpltab is created as docked in a DetachableTabWidget
         self.docked=docked
         self.mainWindow = mainWindow
 
@@ -25,13 +28,13 @@ class Mpltab(QtWidgets.QWidget):
         self.dockingIcon = dockingIcon
         self.unDockingIcon = unDockingIcon
         
-        if toolbar:
+        if toolbar: # If a toolbar is wanted, create it, otherwise create menubar above figure
             self.menubar = NavigationToolbar(MplCanvas, None)
-
         else:
             self.menubar = QtWidgets.QMenuBar(self)
             self.menubar.setFixedHeight(25)
 
+        # ad menubar and canvas to layout
         self.layout.addWidget(self.menubar)
         self.layout.addWidget(MplCanvas)
         if not self.dockingIcon is None and not self.unDockingIcon is None:
@@ -39,9 +42,12 @@ class Mpltab(QtWidgets.QWidget):
         else:
             self.dockAction = QtWidgets.QAction('Undock',self.menubar)
         
+        if not self.docked: # start undocked
+            self.undock(parent=self.parent)
+
         self.setLayout(self.layout)
 
-        
+        # Add shortcut to dock
         self.dockAction.setShortcut("Ctrl+D")
         self.menubar.addAction(self.dockAction)
         self.dockAction.triggered.connect(self.toggleDocked)
@@ -72,12 +78,13 @@ class Mpltab(QtWidgets.QWidget):
 
 
 class MplCanvas(FigureCanvasQTAgg):
-
+    """Simple Matplotlib class"""
     def __init__(self, parent=None, width=5, height=4, dpi=100):
         self.fig = Figure(figsize=(width, height), dpi=dpi)
         self.axes = self.fig.add_subplot(111)
         super(MplCanvas, self).__init__(self.fig)
 
+    # Upon deletion, also close the figure
     def __del__(self):
         plt.close(self.fig)
 
@@ -208,35 +215,49 @@ class DetachableTabWidget(QtWidgets.QTabWidget):
     
 
     def addtab(self,*,tabName=None):
+        """Add matplotlibtab to DetachableTabWidget"""
+        
+        # If no name, generate one
         if tabName is None:
             count = self.count()
             if count is False:
                 count = 0
             tabName = 'Matplotlib Figure '+str(count)
         
+        # Create the MPL object
         sc = MplCanvas(self.parent().tabWidget, width=5, height=4, dpi=100)
+        # Create a random plot
         sc.axes.plot(np.random.rand(10),np.random.rand(10))
+
+        # plotId is simply the next index in self.plots
         plotId = len(self.plots)
 
+        # Create icons for docking/undocking
         dockingIcon = QtGui.QIcon()
         dockingIcon.addPixmap(QtGui.QPixmap(self.app.AppContext.get_resource('icons/dock.png')))
         
         unDockingIcon = QtGui.QIcon()
         unDockingIcon.addPixmap(QtGui.QPixmap(self.app.AppContext.get_resource('icons/undock.png')))
         
-
+        # Create Mpltab
         tab = Mpltab(MplCanvas=sc,plotId=plotId,tabId=self.count(),parent=self, docked=True, mainWindow = self.parent(),\
             dockingIcon=dockingIcon,unDockingIcon=unDockingIcon)
+        
+        # add the tab with temporary name (used in debugging to signify an error)
         self.addTab(tab, 'Temporary')
+        # Add plot to list of plots
         self.plots.append(sc)
 
+        # Set focus to newly created tab
         self.setCurrentIndex(tab.tabId)
         
+        # Set name of newly created tab
         self.setTabText(tab.tabId,tabName)
 
     
 
     def removeTab(self,index):
+        # find ID and delete both entry in self.plots as well as figure
         plotId = self.widget(index).plotId
         plot = self.plots[plotId]
         self.plots[plotId] = None
