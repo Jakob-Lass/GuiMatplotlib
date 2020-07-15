@@ -8,6 +8,57 @@ import numpy as np
 
 from os import path
 
+
+class Mpltab(QtWidgets.QWidget):
+    """ Widget to keep track of mpl figure in tab"""
+    def __init__(self,MplCanvas, plotId, tabId, mainWindow, parent=None, toolbar=True, docked=True):
+        super().__init__(parent=parent)
+
+        self.plotId = plotId
+        self.tabId = tabId
+        self.docked=docked
+        self.mainWindow = mainWindow
+
+        self.layout = QtWidgets.QVBoxLayout()
+        
+        if toolbar:
+            self.toolbar = NavigationToolbar(MplCanvas, None)
+            self.layout.addWidget(self.toolbar)
+            self.layout.addWidget(MplCanvas)
+            self.menubar = self.toolbar
+            self.dockAction = QtWidgets.QAction('Undock',self.toolbar)
+        else:
+            self.menubar = self.mainWindow.menuBar()
+            self.dockAction = QtWidgets.QAction('Undock',self.mainWindow.menubar)
+        
+        self.setLayout(self.layout)
+
+        
+        self.dockAction.setShortcut("Ctrl+D")
+        self.menubar.addAction(self.dockAction)
+        self.dockAction.triggered.connect(self.toggleDocked)
+
+    def toggleDocked(self):
+        if self.docked:
+            self.parent().parent().detachTab(index=self.tabId,point=QtGui.QCursor().pos())
+        else:
+            parent = self.parent()
+            parent.dock()#attachTab(parent.contentWidget, parent.objectName(), parent.windowIcon())
+            
+
+
+    def undock(self,newParent):
+        self.docked = False
+        self.dockAction.setText('Dock')
+        self.setParent(newParent)
+        
+
+    def dock(self,newParent):
+        self.docked = True
+        self.dockAction.setText('Undock')
+        self.setParent(newParent)
+
+
 class MplCanvas(FigureCanvasQTAgg):
 
     def __init__(self, parent=None, width=5, height=4, dpi=100):
@@ -78,7 +129,7 @@ class DetachableTabWidget(QtWidgets.QTabWidget):
     #  @param    point    the screen position for creating the new DetachedTab dialog
     @pyqtSlot(int, QtCore.QPoint)
     def detachTab(self, index, point):
-
+        
         # Get the tab content
         name = self.tabText(index)
         icon = self.tabIcon(index)        
@@ -96,6 +147,7 @@ class DetachableTabWidget(QtWidgets.QTabWidget):
         detachedTab.setGeometry(contentWidgetRect)
         detachedTab.onCloseSignal.connect(self.attachTab)
         detachedTab.move(point)
+        contentWidget.undock(newParent=detachedTab)
         detachedTab.show()
 
 
@@ -110,8 +162,8 @@ class DetachableTabWidget(QtWidgets.QTabWidget):
     def attachTab(self, contentWidget, name, icon):
 
         # Make the content widget a child of this widget
-        contentWidget.setParent(self)
-
+        #contentWidget.setParent(self)
+        contentWidget.dock(newParent=self)
 
         # Create an image from the given icon
         if not icon.isNull():
@@ -150,23 +202,17 @@ class DetachableTabWidget(QtWidgets.QTabWidget):
                 count = 0
             tabName = 'Matplotlib Figure '+str(count)
         
-        tab = QtWidgets.QWidget()
-        self.addTab(tab, 'Temporary')
-        tab.plotId = len(self.plots)
-        
-    
-        layout = QtWidgets.QVBoxLayout()
         sc = MplCanvas(self.parent().tabWidget, width=5, height=4, dpi=100)
         sc.axes.plot(np.random.rand(10),np.random.rand(10))
-        toolbar = NavigationToolbar(sc, None)
-        layout.addWidget(toolbar)
-        layout.addWidget(sc)
+        plotId = len(self.plots)
+
+        tab = Mpltab(MplCanvas=sc,plotId=plotId,tabId=self.count(),parent=self, docked=True, mainWindow = self.parent())
+        self.addTab(tab, 'Temporary')
         self.plots.append(sc)
 
-        self.setCurrentIndex(self.count()-1)
+        self.setCurrentIndex(tab.tabId)
         
-        self.setTabText(self.count()-1,tabName)
-        tab.setLayout(layout)
+        self.setTabText(tab.tabId,tabName)
 
     
 
@@ -208,11 +254,6 @@ class DetachableTabWidget(QtWidgets.QTabWidget):
             self.contentWidget.show()
             self.wasOutside = False
 
-            menubar = self.menuBar()
-            dockAction = QtWidgets.QAction('Dock',menubar)
-            dockAction.setShortcut("Ctrl+D")
-            menubar.addAction(dockAction)
-            dockAction.triggered.connect(self.dock)
 
             self.shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+W"), self, self.close)
             
@@ -467,7 +508,7 @@ class MainWindow(MainBase, MainForm):
         self.tabWidget.tabCloseRequested.connect(lambda index: self.tabWidget.removeTab(index))
 
         self.shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+W"), self, self.tabWidget.on_close_tab)
-
+        self.shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+P"), self, self.tabWidget.addtab)
         self.actionPlot_Random.triggered.connect(self.tabWidget.addtab)
 
         
